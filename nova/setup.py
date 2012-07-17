@@ -8,23 +8,56 @@
 #         http://www.apache.org/licenses/LICENSE-2.0
 #
 #    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    distributed under the License is distributed on an 'AS IS' BASIS, WITHOUT
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+import sys
 from distutils.core import setup
 
-setup(name='nova-gridcentric',
-      version='1.0',
-      description='GridCentric extension for OpenStack',
-      author='GridCentric',
-      author_email='support@gridcentric.com',
-      url='http://www.gridcentric.com/',
-      packages=['gridcentric',
-                'gridcentric.nova',
-                'gridcentric.nova.client',
-                'gridcentric.nova.osapi',
-                'gridcentric.nova.extension'],
-      scripts=['bin/nova-gc',
-               'tools/gc-api'])
+PACKAGE = os.getenv('PACKAGE', 'all')
+
+if PACKAGE == 'all' or PACKAGE == 'nova-gridcentric':
+    setup(name='nova-gridcentric',
+          version=os.getenv('VERSION', '1.0'),
+          description='GridCentric extension for Openstack Compute.',
+          author='GridCentric',
+          author_email='support@gridcentric.com',
+          url='http://www.gridcentric.com/',
+          packages=['gridcentric',
+                    'gridcentric.nova'])
+
+elif PACKAGE == 'all' or PACKAGE == 'nova-compute-gridcentric':
+    setup(name='nova-compute-gridcentric',
+          version=os.getenv('VERSION', '1.0'),
+          description='GridCentric extension for Openstack Compute.',
+          author='GridCentric',
+          author_email='support@gridcentric.com',
+          url='http://www.gridcentric.com/',
+          packages=['gridcentric.nova.extension'],
+          scripts=['bin/nova-gc'])
+
+elif PACKAGE == 'all' or PACKAGE == 'novaclient-gridcentric':
+    setup(name='novaclient-gridcentric',
+          version=os.getenv('VERSION', '1.0'),
+          description='GridCentric extension for OS novaclient.',
+          author='GridCentric',
+          author_email='support@gridcentric.com',
+          url='http://www.gridcentric.com/',
+          packages=['gridcentric.nova.client'],
+          scripts=['tools/gc-api'])
+
+elif PACKAGE == 'all' or PACKAGE == 'nova-api-gridcentric':
+    setup(name='nova-api-gridcentric',
+          version=os.getenv('VERSION', '1.0'),
+          description='GridCentric API extension.',
+          author='GridCentric',
+          author_email='support@gridcentric.com',
+          url='http://www.gridcentric.com/',
+          packages=['gridcentric.nova.osapi'])
+
+else:
+    sys.stderr.write('Unknown PACKAGE: %s\n' % PACKAGE)
+    sys.exit(1)

@@ -9,9 +9,6 @@ NOVA_PATH ?=
 # vms is already on the python path
 VMS_PATH ?=
 
-# The directory dist directory
-DISTDIR ?= dist
-
 # The name of the test report
 TEST_REPORT ?= gc-extension.xml
 
@@ -45,59 +42,65 @@ all : test package pylint
 .PHONY : all
 
 # Build the python egg files
-build : test
-	sed -i -e "s/'.*' ##TIMESTAMP##/'$(TIMESTAMP)' ##TIMESTAMP##/" \
-	    gridcentric/nova/extension/__init__.py
-	python setup.py build
+build : build-nova-gridcentric
+build : build-nova-api-gridcentric
+build : build-novaclient-gridcentric
+build : build-nova-gridcentric
 .PHONY : build
 
 # Package the extension
-package : rpm deb tgz
+package : deb tgz
 .PHONY : package
 
-# Installs the python packages
-install : build
-	@$(PYTHON) setup.py install --prefix=$(DISTDIR)/usr
-	@$(INSTALL_DIR) $(DISTDIR)/etc/init
-	@$(INSTALL_DATA) etc/nova-gridcentric.conf \
-	    $(DISTDIR)/etc/init
-.PHONY: install
+# Build the different packages
+build-nova-gridcentric : test
+	@rm -rf build/ dist/nova-gridcentric
+	@PACKAGE=nova-gridcentric VERSION=$(VERSION) \
+	    $(PYTHON) setup.py install --prefix=dist/nova-gridcentric/usr
+PHONY: build-nova-gridcentric
 
-rpm: rpmbuild install
-	@rpmbuild -bb --buildroot $(PWD)/rpmbuild/BUILDROOT \
-	  --define="%_topdir $(PWD)/rpmbuild" --define="%version $(VERSION).$(RELEASE)" \
-	  --define="%release $(NOVA_RELEASE)py$(PYTHON_VERSION)" packagers/rpm/nova-gridcentric.spec
-.PHONY : rpm
+build-nova-api-gridcentric : test
+	@rm -rf build/ dist/nova-api-gridcentric
+	@sed -i -e "s/'.*' ##TIMESTAMP##/'$(TIMESTAMP)' ##TIMESTAMP##/" \
+	    gridcentric/nova/osapi/gridcentric_extension.py
+	@PACKAGE=nova-api-gridcentric VERSION=$(VERSION) \
+	    $(PYTHON) setup.py install --prefix=dist/nova-api-gridcentric/usr
+.PHONY: build-nova-api-gridcentric
 
-rpmbuild:
-	@rm -rf rpmbuild
-	@$(INSTALL_DIR) rpmbuild
-	@$(INSTALL_DIR) rpmbuild/SRPMS
-	@$(INSTALL_DIR) rpmbuild/BUILD
-	@$(INSTALL_DIR) rpmbuild/BUILDROOT
-	@$(INSTALL_DIR) rpmbuild/SPECS
-	@$(INSTALL_DIR) rpmbuild/RPMS/noarch
-	@$(INSTALL_DIR) rpmbuild/SOURCES
-.PHONY : rpmbuild
+build-novaclient-gridcentric : test
+	@rm -rf build/ dist/novaclient-gridcentric
+	@PACKAGE=novaclient-gridcentric VERSION=$(VERSION) \
+	    $(PYTHON) setup.py install --prefix=dist/novaclient-gridcentric/usr
+.PHONY: build-novaclient-gridcentric
 
-deb: debbuild install
-	@rsync -ruav --delete packagers/deb/ debbuild/
-	@rsync -ruav dist/ debbuild/
+build-nova-compute-gridcentric : test
+	@rm -rf build/ dist/nova-compute-gridcentric
+	@PACKAGE=nova-compute-gridcentric VERSION=$(VERSION) \
+	    $(PYTHON) setup.py install --prefix=dist/nova-compute-gridcentric/usr
+	@$(INSTALL_DIR) dist/nova-compute-gridcentric/etc/init
+	@$(INSTALL_DATA) etc/nova-gridcentric.conf dist/nova-compute-gridcentric/etc/init
+.PHONY: build-nova-compute-gridcentric
+
+deb : deb-nova-gridcentric
+deb : deb-nova-api-gridcentric
+deb : deb-novaclient-gridcentric
+deb : deb-nova-compute-gridcentric
+deb-% : build-%
+	@rm -rf debbuild && $(INSTALL_DIR) debbuild
+	@rsync -ruav packagers/deb/$*/ debbuild
+	@rsync -ruav dist/$*/ debbuild
 	@sed -i "s/\(^Version:\).*/\1 $(VERSION).$(RELEASE)-$(NOVA_RELEASE)py$(PYTHON_VERSION)/" debbuild/DEBIAN/control
 	@dpkg -b debbuild/ .
-	LIBDIR=`ls -1d debbuild/usr/lib*/python*`; mv $$LIBDIR/site-packages $$LIBDIR/dist-packages
+	@LIBDIR=`ls -1d debbuild/usr/lib*/python*`; mv $$LIBDIR/site-packages $$LIBDIR/dist-packages
 	@sed -i "s/\(^Version:\).*/\1 $(VERSION).$(RELEASE)-ubuntu$(NOVA_RELEASE)py$(PYTHON_VERSION)/" debbuild/DEBIAN/control
 	@dpkg -b debbuild/ .
-.PHONY : deb
 
-debbuild:
-	@rm -rf debbuild
-	@$(INSTALL_DIR) debbuild
-.PHONY : debbuild
-
-tgz: install
-	tar -cvzf nova-gridcentric_$(VERSION).$(RELEASE)-$(NOVA_RELEASE)py$(PYTHON_VERSION).tgz -C dist .
-.PHONY: tgz
+tgz : tgz-nova-gridcentric
+tgz : tgz-nova-api-gridcentric
+tgz : tgz-novaclient-gridcentric
+tgz : tgz-nova-compute-gridcentric
+tgz-% : build-%
+	tar -cvzf $*_$(VERSION).$(RELEASE)-$(NOVA_RELEASE)py$(PYTHON_VERSION).tgz -C dist/$* .
 
 # Runs pylint on the code base
 pylint:
@@ -121,7 +124,6 @@ clean :
 	rm -rf build
 	rm -rf dist
 	rm -f pylint.txt
-	rm -rf rpmbuild
 	rm -rf *.deb debbuild
 	rm -rf *.tgz
 .PHONY : clean
@@ -131,7 +133,6 @@ collect :
 	[ -f build/$(TEST_REPORT) ] && \
 	    mkdir -p $(COLLECT_DIR)/test-reports/ && \
 	    cp build/$(TEST_REPORT) $(COLLECT_DIR)/test-reports/$(TEST_REPORT) || true
-	mkdir -p $(COLLECT_DIR)/rpm/ && cp rpmbuild/RPMS/noarch/*.rpm $(COLLECT_DIR)/rpm/ || true
 	mkdir -p $(COLLECT_DIR)/deb/ && cp *.deb $(COLLECT_DIR)/deb/ || true
 	mkdir -p $(COLLECT_DIR)/tgz/ && cp *.tgz $(COLLECT_DIR)/tgz || true
 

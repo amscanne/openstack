@@ -26,7 +26,7 @@ from nova.api.openstack.compute.views import servers as views_servers
 import nova.api.openstack.common as common
 
 
-from gridcentric.nova.extension import API
+from gridcentric.nova import API
 
 LOG = logging.getLogger("nova.api.extensions.gridcentric")
 
@@ -164,7 +164,7 @@ class Gridcentric_extension(object):
     name = "Gridcentric"
     alias = "GC"
     namespace = "http://www.gridcentric.com"
-    updated = '2012-03-14T18:33:34-07:00' ##TIMESTAMP##
+    updated = '2012-07-17T13:15:20-07:00' ##TIMESTAMP##
 
     def __init__(self, ext_mgr):
         ext_mgr.register(self)
